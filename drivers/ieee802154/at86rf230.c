@@ -636,6 +636,8 @@ static void at86rf230_irqwork(struct work_struct *work)
 	int rc;
 	unsigned long flags;
 
+	printk(KERN_ALERT "IRQ %s %d\n", __FUNCTION__, __LINE__);
+
 	rc = at86rf230_read_subreg(lp, RG_IRQ_STATUS, 0xff, 0, &val);
 	status |= val;
 
@@ -786,6 +788,8 @@ static int __devinit at86rf230_probe(struct spi_device *spi)
 	int rc;
 	const char *chip;
 	int supported = 0;
+
+	printk(KERN_ALERT "Debug: at %s %d\n", __FUNCTION__, __LINE__);
 
 	if (!spi->irq) {
 		dev_err(&spi->dev, "no IRQ specified\n");
@@ -954,6 +958,8 @@ static struct spi_driver at86rf230_driver = {
 
 static int __init at86rf230_init(void)
 {
+  printk(KERN_ALERT "DEBUG: Passed %s %d\n", __FUNCTION__, __LINE__);
+
 	return spi_register_driver(&at86rf230_driver);
 }
 module_init(at86rf230_init);

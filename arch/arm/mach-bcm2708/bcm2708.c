@@ -32,6 +32,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/spi/spi.h>
+#include <linux/spi/at86rf230.h>
 #include <linux/w1-gpio.h>
 
 #include <linux/version.h>
@@ -587,6 +588,14 @@ static struct platform_device bcm2708_spi_device = {
 };
 
 #ifdef CONFIG_SPI
+static struct at86rf230_platform_data rf230_pdata = {
+	.rstn		= 24,
+	.slp_tr		= 25,
+	.dig2		= 22,
+};
+
+#define GPIO_IRQ(gpio) (GPIO_IRQ_START + (gpio))
+
 static struct spi_board_info bcm2708_spi_devices[] = {
 	{
 		.modalias = "spidev",
@@ -594,13 +603,25 @@ static struct spi_board_info bcm2708_spi_devices[] = {
 		.bus_num = 0,
 		.chip_select = 0,
 		.mode = SPI_MODE_0,
-	}, {
-		.modalias = "spidev",
-		.max_speed_hz = 500000,
-		.bus_num = 0,
-		.chip_select = 1,
-		.mode = SPI_MODE_0,
-	}
+	},
+
+        /* { */
+	/* 	.modalias = "spidev", */
+	/* 	.max_speed_hz = 500000, */
+	/* 	.bus_num = 0, */
+	/* 	.chip_select = 1, */
+	/* 	.mode = SPI_MODE_0, */
+	/* } */
+	{
+		.modalias	= "at86rf230",
+		.chip_select	= 1,
+		.max_speed_hz	= 3 * 1000 * 1000,
+		.bus_num	= 0,
+		.irq		= GPIO_IRQ(23),
+		.platform_data	= &rf230_pdata,
+	},
+
+
 };
 #endif
 

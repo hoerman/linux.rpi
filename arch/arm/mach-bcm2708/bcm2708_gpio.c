@@ -218,6 +218,9 @@ static irqreturn_t bcm2708_gpio_interrupt(int irq, void *dev_id)
 	unsigned bank;
 	int i;
 	unsigned gpio;
+
+	printk(KERN_ALERT "GPIO IRQ %s %d\n", __FUNCTION__, __LINE__);
+
 	for (bank = 0; bank <= 1; bank++) {
 		edsr = readl(__io_address(GPIO_BASE) + GPIOEDS(bank));
 		for_each_set_bit(i, &edsr, 32) {
