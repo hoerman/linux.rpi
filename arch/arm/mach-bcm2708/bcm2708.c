@@ -595,6 +595,7 @@ static struct at86rf230_platform_data rf230_pdata = {
 };
 
 #define GPIO_IRQ(gpio) (GPIO_IRQ_START + (gpio))
+#define RF230_IRQ_PIN    23
 
 static struct spi_board_info bcm2708_spi_devices[] = {
 	{
@@ -617,7 +618,7 @@ static struct spi_board_info bcm2708_spi_devices[] = {
 		.chip_select	= 1,
 		.max_speed_hz	= 3 * 1000 * 1000,
 		.bus_num	= 0,
-		.irq		= GPIO_IRQ(23),
+		.irq		= GPIO_IRQ(RF230_IRQ_PIN),
 		.platform_data	= &rf230_pdata,
 	},
 
@@ -770,8 +771,10 @@ void __init bcm2708_init(void)
 	system_serial_low = serial;
 
 #ifdef CONFIG_SPI
+
 	spi_register_board_info(bcm2708_spi_devices,
 			ARRAY_SIZE(bcm2708_spi_devices));
+
 #endif
 }
 
