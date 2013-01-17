@@ -489,29 +489,44 @@ static int ieee802154_scan_req(struct sk_buff *skb, struct genl_info *info)
 	u8 duration;
 	u8 page;
 
+	printk(KERN_ALERT "shwh %s %d\n", __FUNCTION__, __LINE__);
+
 	if (!info->attrs[IEEE802154_ATTR_SCAN_TYPE] ||
 	    !info->attrs[IEEE802154_ATTR_CHANNELS] ||
 	    !info->attrs[IEEE802154_ATTR_DURATION])
 		return -EINVAL;
 
+	printk(KERN_ALERT "shwh %s %d\n", __FUNCTION__, __LINE__);
+
 	dev = ieee802154_nl_get_dev(info);
 	if (!dev)
 		return -ENODEV;
 
+	printk(KERN_ALERT "shwh %s %d\n", __FUNCTION__, __LINE__);
+
 	type = nla_get_u8(info->attrs[IEEE802154_ATTR_SCAN_TYPE]);
 	channels = nla_get_u32(info->attrs[IEEE802154_ATTR_CHANNELS]);
 	duration = nla_get_u8(info->attrs[IEEE802154_ATTR_DURATION]);
+
+	printk(KERN_ALERT "shwh %s %d\n", __FUNCTION__, __LINE__);
 
 	if (info->attrs[IEEE802154_ATTR_PAGE])
 		page = nla_get_u8(info->attrs[IEEE802154_ATTR_PAGE]);
 	else
 		page = 0;
 
+	printk(KERN_ALERT "shwh %s %d\n", __FUNCTION__, __LINE__);
+
 
 	ret = ieee802154_mlme_ops(dev)->scan_req(dev, type, channels, page,
 			duration);
 
+	printk(KERN_ALERT "shwh %s %d\n", __FUNCTION__, __LINE__);
+
 	dev_put(dev);
+
+	printk(KERN_ALERT "shwh %s %d\n", __FUNCTION__, __LINE__);
+
 	return ret;
 }
 

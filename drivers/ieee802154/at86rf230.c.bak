@@ -894,14 +894,22 @@ static int at86rf230_probe(struct spi_device *spi)
 		goto err_gpio_dir;
 
 
+	printk(KERN_ERR "rf230-trace %s, %d\n", __FUNCTION__, __LINE__);
 	rc = irq_set_irq_type(spi->irq, IRQ_TYPE_EDGE_RISING);
 	if (rc)
   	        goto err_gpio_dir;
 
+	printk(KERN_ALERT "req irq %d at %s %d\n", spi->irq,
+	       __FUNCTION__, __LINE__);
 	rc = request_irq(spi->irq, at86rf230_isr, IRQF_SHARED,
 			 dev_name(&spi->dev), lp);
 	if (rc)
 		goto err_gpio_dir;
+
+	printk(KERN_ERR "rf230-trace %s, %d\n", __FUNCTION__, __LINE__);
+	rc = irq_set_irq_type(spi->irq, IRQ_TYPE_EDGE_RISING);
+	if (rc)
+  	        goto err_irq;
 
 	rc = ieee802154_register_device(lp->dev);
 	if (rc)
