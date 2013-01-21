@@ -81,6 +81,10 @@ void mac802154_monitors_rx(struct mac802154_priv *priv, struct sk_buff *skb)
 		data[1] = crc >> 8;
 
 		netif_rx_ni(skb2);
+
+		printk(KERN_ALERT "monrx crc: %d, len: %d/%d, PH: %d typ: %d\n", 
+		       crc, skb2->len, skb2->data_len, PACKET_HOST,
+		       skb2->pkt_type);
 	}
 	rcu_read_unlock();
 }
