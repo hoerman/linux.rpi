@@ -592,6 +592,7 @@ static struct at86rf230_platform_data rf230_pdata = {
 	.rstn		= 24,
 	.slp_tr		= 25,
 	.dig2		= 22,
+	.irq_type		= IRQ_TYPE_EDGE_RISING,
 };
 
 #define GPIO_IRQ(gpio) (GPIO_IRQ_START + (gpio))
