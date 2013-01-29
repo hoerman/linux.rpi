@@ -893,9 +893,11 @@ static int at86rf230_probe(struct spi_device *spi)
 	if (rc)
 		goto err_gpio_dir;
 
-	rc = irq_set_irq_type(spi->irq, IRQ_TYPE_EDGE_RISING);
-	if (rc)
-		goto err_gpio_dir;
+	if (lp->irq_type) {
+		rc = irq_set_irq_type(spi->irq, lp->irq_type);
+		if (rc)
+			goto err_gpio_dir;
+	}
 
 	rc = request_irq(spi->irq, at86rf230_isr, IRQF_SHARED,
 			 dev_name(&spi->dev), lp);

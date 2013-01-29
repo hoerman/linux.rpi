@@ -26,6 +26,7 @@ struct at86rf230_platform_data {
 	int rstn;
 	int slp_tr;
 	int dig2;
+	int irq_type;
 };
 
 #endif
