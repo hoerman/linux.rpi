@@ -589,10 +589,10 @@ static struct platform_device bcm2708_spi_device = {
 
 #ifdef CONFIG_SPI
 static struct at86rf230_platform_data rf230_pdata = {
-	.rstn		= 24,
-	.slp_tr		= 25,
-	.dig2		= 22,
-	.irq_type		= IRQ_TYPE_EDGE_RISING,
+	.rstn = 24,
+	.slp_tr = 25,
+	.dig2 = 22,
+	.irq_type = IRQ_TYPE_EDGE_RISING,
 };
 
 #define GPIO_IRQ(gpio) (GPIO_IRQ_START + (gpio))
