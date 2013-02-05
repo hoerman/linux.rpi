@@ -723,13 +723,6 @@ static int at86rf230_hw_init(struct at86rf230_local *lp)
 	if (rc)
 		return rc;
 
-	rc = at86rf230_read_subreg(lp, RG_IRQ_STATUS, 0xff, 0, &status);
-	if (rc)
-	        return rc;
-
-	dev_info(&lp->spi->dev, "IRQ Status2: %02x\n", status);
-
-
 	/* CLKM changes are applied immediately */
 	rc = at86rf230_write_subreg(lp, SR_CLKM_SHA_SEL, 0x00);
 	if (rc)
