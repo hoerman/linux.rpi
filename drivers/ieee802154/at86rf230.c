@@ -38,7 +38,7 @@
 
 struct at86rf230_local {
 	struct spi_device *spi;
-	int rstn, slp_tr, dig2;
+	int rstn, slp_tr, dig2, irq_type;
 
 	u8 part;
 	u8 vers;
@@ -640,9 +640,13 @@ static void at86rf230_irqwork(struct work_struct *work)
 	rc = at86rf230_read_subreg(lp, RG_IRQ_STATUS, 0xff, 0, &val);
 	status |= val;
 
+	if (status & ~(IRQ_RX_START | IRQ_TRX_END))
+	  printk(KERN_ERR "TRX_UR %d, status: %d\n", (status & IRQ_TRX_UR), status);
+
 	status &= ~IRQ_PLL_LOCK; /* ignore */
 	status &= ~IRQ_RX_START; /* ignore */
 	status &= ~IRQ_AMI; /* ignore */
+
 	status &= ~IRQ_TRX_UR; /* FIXME: possibly handle ???*/
 
 	if (status & IRQ_TRX_END) {
@@ -662,14 +666,14 @@ static void at86rf230_irqwork(struct work_struct *work)
 	lp->irq_disabled = 0;
 	spin_unlock_irqrestore(&lp->lock, flags);
 
-	enable_irq(lp->spi->irq);
+	// enable_irq(lp->spi->irq);
 }
 
 static irqreturn_t at86rf230_isr(int irq, void *data)
 {
 	struct at86rf230_local *lp = data;
 
-	disable_irq_nosync(irq);
+	// disable_irq_nosync(irq);
 
 	spin_lock(&lp->lock);
 	lp->irq_disabled = 1;
@@ -685,6 +689,14 @@ static int at86rf230_hw_init(struct at86rf230_local *lp)
 {
 	u8 status;
 	int rc;
+
+	enable_irq(lp->spi->irq);
+
+	rc = at86rf230_read_subreg(lp, RG_IRQ_STATUS, 0xff, 0, &status);
+	if (rc)
+	        return rc;
+
+	dev_info(&lp->spi->dev, "IRQ Status: %02x\n", status);
 
 	rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, &status);
 	if (rc)
@@ -710,6 +722,13 @@ static int at86rf230_hw_init(struct at86rf230_local *lp)
 							     */
 	if (rc)
 		return rc;
+
+	rc = at86rf230_read_subreg(lp, RG_IRQ_STATUS, 0xff, 0, &status);
+	if (rc)
+	        return rc;
+
+	dev_info(&lp->spi->dev, "IRQ Status2: %02x\n", status);
+
 
 	/* CLKM changes are applied immediately */
 	rc = at86rf230_write_subreg(lp, SR_CLKM_SHA_SEL, 0x00);
@@ -775,6 +794,7 @@ static int at86rf230_fill_data(struct spi_device *spi)
 	lp->rstn = pdata->rstn;
 	lp->slp_tr = pdata->slp_tr;
 	lp->dig2 = pdata->dig2;
+	lp->irq_type = pdata->irq_type;
 
 	return 0;
 }
