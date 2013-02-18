@@ -714,12 +714,7 @@ static int at86rf230_hw_init(struct at86rf230_local *lp)
 		dev_info(&lp->spi->dev, "Status: %02x\n", status);
 	}
 
-	rc = at86rf230_write_subreg(lp, SR_IRQ_MASK, 0xff); /* IRQ_TRX_UR |
-							     * IRQ_CCA_ED |
-							     * IRQ_TRX_END |
-							     * IRQ_PLL_UNL |
-							     * IRQ_PLL_LOCK
-							     */
+	rc = at86rf230_write_subreg(lp, SR_IRQ_MASK, IRQ_TRX_UR | IRQ_TRX_END);
 	if (rc)
 		return rc;
 
