@@ -31,6 +31,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/at86rf230.h>
 #include <linux/skbuff.h>
+#include <linux/irq.h>
 
 #include <net/mac802154.h>
 #include <net/wpan-phy.h>
@@ -756,11 +757,6 @@ static int at86rf230_fill_data(struct spi_device *spi)
 	struct at86rf230_local *lp = spi_get_drvdata(spi);
 	struct at86rf230_platform_data *pdata = spi->dev.platform_data;
 
-	if (!pdata) {
-		dev_err(&spi->dev, "no platform_data\n");
-		return -EINVAL;
-	}
-
 	lp->rstn = pdata->rstn;
 	lp->slp_tr = pdata->slp_tr;
 	lp->dig2 = pdata->dig2;
@@ -772,6 +768,7 @@ static int at86rf230_probe(struct spi_device *spi)
 {
 	struct ieee802154_dev *dev;
 	struct at86rf230_local *lp;
+	struct at86rf230_platform_data *pdata;
 	u8 man_id_0, man_id_1;
 	int rc;
 	const char *chip;
@@ -779,6 +776,13 @@ static int at86rf230_probe(struct spi_device *spi)
 
 	if (!spi->irq) {
 		dev_err(&spi->dev, "no IRQ specified\n");
+		return -EINVAL;
+	}
+
+	pdata = spi->dev.platform_data;
+
+	if (!pdata) {
+		dev_err(&spi->dev, "no platform_data\n");
 		return -EINVAL;
 	}
 
@@ -880,6 +884,12 @@ static int at86rf230_probe(struct spi_device *spi)
 	rc = at86rf230_hw_init(lp);
 	if (rc)
 		goto err_gpio_dir;
+
+	if (pdata->irq_type) {
+		rc = irq_set_irq_type(spi->irq, pdata->irq_type);
+		if (rc)
+			goto err_gpio_dir;
+	}
 
 	rc = request_irq(spi->irq, at86rf230_isr, IRQF_SHARED,
 			 dev_name(&spi->dev), lp);

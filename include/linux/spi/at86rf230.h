@@ -26,6 +26,11 @@ struct at86rf230_platform_data {
 	int rstn;
 	int slp_tr;
 	int dig2;
+
+	/* Set this if your platoform requires the driver to set the needed
+	 * irq type. Most likely this will be IRQ_TYPE_EDGE_RISING.
+	 */
+	int irq_type;
 };
 
 #endif
