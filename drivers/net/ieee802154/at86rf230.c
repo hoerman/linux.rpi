@@ -37,7 +37,7 @@
 
 struct at86rf230_local {
 	struct spi_device *spi;
-	int rstn, slp_tr, dig2;
+	int rstn, slp_tr, dig2, irq_type;
 
 	u8 part;
 	u8 vers;
@@ -764,6 +764,7 @@ static int at86rf230_fill_data(struct spi_device *spi)
 	lp->rstn = pdata->rstn;
 	lp->slp_tr = pdata->slp_tr;
 	lp->dig2 = pdata->dig2;
+	lp->irq_type = pdata->irq_type;
 
 	return 0;
 }
@@ -880,6 +881,12 @@ static int at86rf230_probe(struct spi_device *spi)
 	rc = at86rf230_hw_init(lp);
 	if (rc)
 		goto err_gpio_dir;
+
+	if (lp->irq_type) {
+		rc = irq_set_irq_type(spi->irq, lp->irq_type);
+		if (rc)
+			goto err_gpio_dir;
+	}
 
 	rc = request_irq(spi->irq, at86rf230_isr, IRQF_SHARED,
 			 dev_name(&spi->dev), lp);
