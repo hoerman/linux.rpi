@@ -33,6 +33,57 @@
 
 #include "mac802154.h"
 
+static int mac802154_send_cmd(struct net_device *dev,
+			      struct ieee802154_addr *addr,
+			      struct ieee802154_addr *saddr,
+			      const u8 *buf, int len)
+{
+	struct sk_buff *skb;
+	int err, hlen, tlen;
+
+	BUG_ON(dev->type != ARPHRD_IEEE802154);
+
+	//skb = alloc_skb(LL_ALLOCATED_SPACE(dev) + len, GFP_KERNEL);
+	hlen = LL_RESERVED_SPACE(dev);
+	tlen = dev->needed_tailroom;
+	skb = alloc_skb(hlen + tlen + len, GFP_KERNEL);
+	if (!skb)
+		return -ENOMEM;
+
+	skb_reserve(skb, LL_RESERVED_SPACE(dev));
+
+	skb_reset_network_header(skb);
+
+	mac_cb(skb)->flags = IEEE802154_FC_TYPE_MAC_CMD | MAC_CB_FLAG_ACKREQ;
+	mac_cb(skb)->seq = ieee802154_mlme_ops(dev)->get_dsn(dev);
+	err = dev_hard_header(skb, dev, ETH_P_IEEE802154, addr, saddr, len);
+	if (err < 0) {
+		kfree_skb(skb);
+		return err;
+	}
+
+	skb_reset_mac_header(skb);
+	memcpy(skb_put(skb, len), buf, len);
+
+	skb->dev = dev;
+	skb->protocol = htons(ETH_P_IEEE802154);
+
+	return dev_queue_xmit(skb);
+}
+
+
+int mac802154_send_beacon_req(struct net_device *dev)
+{
+	struct ieee802154_addr addr;
+	struct ieee802154_addr saddr;
+	u8 cmd = IEEE802154_CMD_BEACON_REQ;
+	addr.addr_type = IEEE802154_ADDR_SHORT;
+	addr.short_addr = IEEE802154_ADDR_BROADCAST;
+	addr.pan_id = IEEE802154_PANID_BROADCAST;
+	saddr.addr_type = IEEE802154_ADDR_NONE;
+	return mac802154_send_cmd(dev, &addr, &saddr, &cmd, 1);
+}
+
 static int mac802154_mlme_start_req(struct net_device *dev,
 				    struct ieee802154_addr *addr,
 				    u8 channel, u8 page,
@@ -71,6 +122,8 @@ struct ieee802154_reduced_mlme_ops mac802154_mlme_reduced = {
 struct ieee802154_mlme_ops mac802154_mlme_wpan = {
 	.get_phy = mac802154_get_phy,
 	.start_req = mac802154_mlme_start_req,
+	.scan_req = mac802154_mlme_scan_req,
 	.get_pan_id = mac802154_dev_get_pan_id,
 	.get_short_addr = mac802154_dev_get_short_addr,
+	.get_dsn = mac802154_dev_get_dsn,
 };

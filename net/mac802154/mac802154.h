@@ -90,10 +90,18 @@ struct mac802154_sub_if_data {
 
 #define MAC802154_MAX_XMIT_ATTEMPTS	3
 
-#define MAC802154_CHAN_NONE		(~(u8)0) /* No channel is assigned */
+#define MAC802154_CHAN_NONE		((u8) ~0) /* No channel is assigned */
 
 extern struct ieee802154_reduced_mlme_ops mac802154_mlme_reduced;
 extern struct ieee802154_mlme_ops mac802154_mlme_wpan;
+
+int mac802154_mlme_scan_req(struct net_device *dev,
+			    u8 type, u32 channels, u8 page, u8 duration);
+
+int mac802154_process_beacon(struct net_device *dev, struct sk_buff *skb);
+int mac802154_send_beacon_req(struct net_device *dev);
+
+struct mac802154_priv *mac802154_slave_get_priv(struct net_device *dev);
 
 int mac802154_slave_open(struct net_device *dev);
 int mac802154_slave_close(struct net_device *dev);
@@ -114,5 +122,7 @@ void mac802154_dev_set_ieee_addr(struct net_device *dev);
 u16 mac802154_dev_get_pan_id(const struct net_device *dev);
 void mac802154_dev_set_pan_id(struct net_device *dev, u16 val);
 void mac802154_dev_set_page_channel(struct net_device *dev, u8 page, u8 chan);
+
+u8 mac802154_dev_get_dsn(const struct net_device *dev);
 
 #endif /* MAC802154_H */

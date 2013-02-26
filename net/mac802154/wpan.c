@@ -437,6 +437,8 @@ mac802154_subif_frame(struct mac802154_sub_if_data *sdata, struct sk_buff *skb)
 	sdata->dev->stats.rx_bytes += skb->len;
 
 	switch (mac_cb_type(skb)) {
+	case IEEE802154_FC_TYPE_BEACON:
+		return mac802154_process_beacon(sdata->dev, skb);
 	case IEEE802154_FC_TYPE_DATA:
 		return mac802154_process_data(sdata->dev, skb);
 	default:

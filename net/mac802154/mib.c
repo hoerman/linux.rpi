@@ -39,7 +39,7 @@ struct hw_addr_filt_notify_work {
 	unsigned long changed;
 };
 
-static struct mac802154_priv *mac802154_slave_get_priv(struct net_device *dev)
+struct mac802154_priv *mac802154_slave_get_priv(struct net_device *dev)
 {
 	struct mac802154_sub_if_data *priv = netdev_priv(dev);
 
@@ -196,4 +196,18 @@ void mac802154_dev_set_page_channel(struct net_device *dev, u8 page, u8 chan)
 		work->dev = dev;
 		queue_work(priv->hw->dev_workqueue, &work->work);
 	}
+}
+
+u8 mac802154_dev_get_dsn(const struct net_device *dev)
+{
+	struct mac802154_sub_if_data *priv = netdev_priv(dev);
+	u16 ret;
+
+	BUG_ON(dev->type != ARPHRD_IEEE802154);
+
+	spin_lock_bh(&priv->mib_lock);
+	ret = priv->dsn++;
+	spin_unlock_bh(&priv->mib_lock);
+
+	return ret;
 }
