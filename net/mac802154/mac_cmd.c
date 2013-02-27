@@ -84,6 +84,30 @@ int mac802154_send_beacon_req(struct net_device *dev)
 	return mac802154_send_cmd(dev, &addr, &saddr, &cmd, 1);
 }
 
+static int mac802154_mlme_assoc_req(struct net_device *dev,
+				    struct ieee802154_addr *addr,
+				    u8 channel, u8 page, u8 cap)
+{
+	struct ieee802154_addr saddr;
+	u8 buf[2];
+	int pos = 0;
+
+	saddr.addr_type = IEEE802154_ADDR_LONG;
+	saddr.pan_id = IEEE802154_PANID_BROADCAST;
+	memcpy(saddr.hwaddr, dev->dev_addr, IEEE802154_ADDR_LEN);
+
+
+	/* FIXME: set PIB/MIB info */
+	mac802154_dev_set_pan_id(dev, addr->pan_id);
+	mac802154_dev_set_page_channel(dev, page, channel);
+	mac802154_dev_set_ieee_addr(dev);
+
+	buf[pos++] = IEEE802154_CMD_ASSOCIATION_REQ;
+	buf[pos++] = cap;
+
+	return mac802154_send_cmd(dev, addr, &saddr, buf, pos);
+}
+
 static int mac802154_mlme_start_req(struct net_device *dev,
 				    struct ieee802154_addr *addr,
 				    u8 channel, u8 page,
@@ -120,6 +144,7 @@ struct ieee802154_reduced_mlme_ops mac802154_mlme_reduced = {
 };
 
 struct ieee802154_mlme_ops mac802154_mlme_wpan = {
+	.assoc_req = mac802154_mlme_assoc_req,
 	.get_phy = mac802154_get_phy,
 	.start_req = mac802154_mlme_start_req,
 	.scan_req = mac802154_mlme_scan_req,
