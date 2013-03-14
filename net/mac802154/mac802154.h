@@ -98,6 +98,7 @@ extern struct ieee802154_mlme_ops mac802154_mlme_wpan;
 int mac802154_mlme_scan_req(struct net_device *dev,
 			    u8 type, u32 channels, u8 page, u8 duration);
 
+int mac802154_process_cmd(struct net_device *dev, struct sk_buff *skb);
 int mac802154_process_beacon(struct net_device *dev, struct sk_buff *skb);
 int mac802154_send_beacon_req(struct net_device *dev);
 

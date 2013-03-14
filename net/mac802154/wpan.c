@@ -145,6 +145,8 @@ static int mac802154_header_create(struct sk_buff *skb,
 
 	head[pos++] = mac_cb(skb)->seq; /* DSN/BSN */
 	fc = mac_cb_type(skb);
+	if (mac_cb_is_ackreq(skb))
+		fc |= IEEE802154_FC_ACK_REQ;
 
 	if (!saddr) {
 		spin_lock_bh(&priv->mib_lock);
@@ -439,6 +441,8 @@ mac802154_subif_frame(struct mac802154_sub_if_data *sdata, struct sk_buff *skb)
 	switch (mac_cb_type(skb)) {
 	case IEEE802154_FC_TYPE_BEACON:
 		return mac802154_process_beacon(sdata->dev, skb);
+	case IEEE802154_FC_TYPE_MAC_CMD:
+		return mac802154_process_cmd(sdata->dev, skb);
 	case IEEE802154_FC_TYPE_DATA:
 		return mac802154_process_data(sdata->dev, skb);
 	default:

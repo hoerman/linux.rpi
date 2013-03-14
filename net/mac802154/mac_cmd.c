@@ -33,6 +33,71 @@
 
 #include "mac802154.h"
 
+static int mac802154_cmd_assoc_resp(struct sk_buff *skb)
+{
+	u8 status;
+	u16 short_addr;
+
+	if (skb->len != 4)
+		return -EINVAL;
+
+	if (skb->pkt_type != PACKET_HOST)
+		return 0;
+
+	if (mac_cb(skb)->sa.addr_type != IEEE802154_ADDR_LONG ||
+	    !(mac_cb(skb)->flags & MAC_CB_FLAG_INTRAPAN))
+		return -EINVAL;
+
+	/* FIXME: check that we requested association ? */
+
+	status = skb->data[3];
+	short_addr = skb->data[1] | (skb->data[2] << 8);
+	pr_info("Received ASSOC-RESP status %x, addr %hx\n", status,
+			short_addr);
+	if (status) {
+		mac802154_dev_set_short_addr(skb->dev,
+				IEEE802154_ADDR_BROADCAST);
+		mac802154_dev_set_pan_id(skb->dev,
+				IEEE802154_PANID_BROADCAST);
+	} else
+		mac802154_dev_set_short_addr(skb->dev, short_addr);
+
+	return ieee802154_nl_assoc_confirm(skb->dev, short_addr, status);
+}
+
+int mac802154_process_cmd(struct net_device *dev, struct sk_buff *skb)
+{
+	u8 cmd;
+
+	if (skb->len < 1) {
+		pr_warning("Uncomplete command frame!\n");
+		goto drop;
+	}
+
+	cmd = *(skb->data);
+	pr_debug("Command %02x on device %s\n", cmd, dev->name);
+
+	switch (cmd) {
+	case IEEE802154_CMD_ASSOCIATION_RESP:
+		mac802154_cmd_assoc_resp(skb);
+		break;
+//	case IEEE802154_CMD_DISASSOCIATION_NOTIFY:
+//		mac802154_cmd_disassoc_notify(skb);
+//		break;
+	default:
+		pr_debug("Frame type is not supported yet\n");
+		goto drop;
+	}
+
+
+	kfree_skb(skb);
+	return NET_RX_SUCCESS;
+
+drop:
+	kfree_skb(skb);
+	return NET_RX_DROP;
+}
+
 static int mac802154_send_cmd(struct net_device *dev,
 			      struct ieee802154_addr *addr,
 			      struct ieee802154_addr *saddr,
@@ -84,13 +149,29 @@ int mac802154_send_beacon_req(struct net_device *dev)
 	return mac802154_send_cmd(dev, &addr, &saddr, &cmd, 1);
 }
 
+static int mac802154_mlme_data_req(struct net_device *dev,
+				   struct ieee802154_addr *addr)
+{
+	struct ieee802154_addr saddr;
+	u8 buf[1];
+	int pos = 0;
+
+	saddr.addr_type = IEEE802154_ADDR_LONG;
+	saddr.pan_id = addr->pan_id;
+	memcpy(saddr.hwaddr, dev->dev_addr, IEEE802154_ADDR_LEN);
+
+	buf[pos++] = IEEE802154_CMD_DATA_REQ;
+
+	return mac802154_send_cmd(dev, addr, &saddr, buf, pos);
+}
+
 static int mac802154_mlme_assoc_req(struct net_device *dev,
 				    struct ieee802154_addr *addr,
 				    u8 channel, u8 page, u8 cap)
 {
 	struct ieee802154_addr saddr;
 	u8 buf[2];
-	int pos = 0;
+	int rc, pos = 0;
 
 	saddr.addr_type = IEEE802154_ADDR_LONG;
 	saddr.pan_id = IEEE802154_PANID_BROADCAST;
@@ -105,7 +186,18 @@ static int mac802154_mlme_assoc_req(struct net_device *dev,
 	buf[pos++] = IEEE802154_CMD_ASSOCIATION_REQ;
 	buf[pos++] = cap;
 
-	return mac802154_send_cmd(dev, addr, &saddr, buf, pos);
+	printk("sending assoc_req\n");
+	rc = mac802154_send_cmd(dev, addr, &saddr, buf, pos);
+	if (rc < 0)
+		goto err;
+
+	// FIXME we should sleep aResponseWaitTime
+	msleep(1);
+
+	printk("sending data_req\n");
+	rc = mac802154_mlme_data_req(dev, addr);
+err:
+	return rc;
 }
 
 static int mac802154_mlme_start_req(struct net_device *dev,

@@ -450,12 +450,28 @@ at86rf230_ed(struct ieee802154_dev *dev, u8 *level)
 }
 
 static int
-at86rf230_state(struct ieee802154_dev *dev, int state)
+at86rf230_read_state(struct ieee802154_dev *dev, u8 *val)
 {
 	struct at86rf230_local *lp = dev->priv;
 	int rc;
+
+	might_sleep();
+
+	do {
+		rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, val);
+		if (rc)
+			goto out;
+	} while (*val == STATE_TRANSITION_IN_PROGRESS);
+	
+out:
+	return rc;
+}
+
+static bool
+at86rf230_in_state(struct ieee802154_dev *dev, int state)
+{
+	int desired_status, rc;
 	u8 val;
-	u8 desired_status;
 
 	might_sleep();
 
@@ -466,31 +482,67 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 	else
 		desired_status = state;
 
-	do {
-		rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, &val);
-		if (rc)
-			goto err;
-	} while (val == STATE_TRANSITION_IN_PROGRESS);
-
-	if (val == desired_status)
-		return 0;
-
-	/* state is equal to phy states */
-	rc = at86rf230_write_subreg(lp, SR_TRX_CMD, state);
+	rc = at86rf230_read_state(dev, &val);
 	if (rc)
 		goto err;
 
-	do {
-		rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, &val);
-		if (rc)
-			goto err;
-	} while (val == STATE_TRANSITION_IN_PROGRESS);
+	printk(KERN_ERR "in state %d (req: %d)\n", val, state);
 
+	return (val == desired_status);
 
-	if (val == desired_status)
+err:
+	return false;
+}
+
+static int
+__at86rf230_req_state(struct ieee802154_dev *dev, int state)
+{
+	struct at86rf230_local *lp = dev->priv;	
+
+	/* state is equal to phy states */
+	return at86rf230_write_subreg(lp, SR_TRX_CMD, state);
+}
+
+static int
+at86rf230_req_state(struct ieee802154_dev *dev, int state)
+{
+	int rc;
+
+	might_sleep();
+
+	if (at86rf230_in_state(dev, state))
 		return 0;
 
-	pr_err("unexpected state change: %d, asked for %d\n", val, state);
+	rc = __at86rf230_req_state(dev, state);
+	if (rc)
+		goto err;
+
+	return 0;
+
+err:
+	pr_err("error: %d\n", rc);
+	return rc;
+}
+
+static int
+at86rf230_state(struct ieee802154_dev *dev, int state)
+{
+	int rc;
+
+	might_sleep();
+
+	if (at86rf230_in_state(dev, state))
+		return 0;
+
+	/* state is equal to phy states */
+	rc = __at86rf230_req_state(dev, state);
+	if (rc)
+		goto err;
+
+	if (at86rf230_in_state(dev, state))
+		return 0;
+
+	//pr_err("unexpected state change: %d, asked for %d\n", val, state);
 	return -EBUSY;
 
 err:
@@ -530,9 +582,11 @@ at86rf230_channel(struct ieee802154_dev *dev, int page, int channel)
 		return -EINVAL;
 	}
 
+
 	rc = at86rf230_write_subreg(lp, SR_CHANNEL, channel);
 	msleep(1); /* Wait for PLL */
 	dev->phy->current_channel = channel;
+
 
 	return 0;
 }
@@ -543,6 +597,7 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 	struct at86rf230_local *lp = dev->priv;
 	int rc;
 	unsigned long flags;
+	u8 val;
 
 	spin_lock(&lp->lock);
 	if  (lp->irq_busy) {
@@ -552,7 +607,7 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 	spin_unlock(&lp->lock);
 
 	might_sleep();
-
+	
 	rc = at86rf230_state(dev, STATE_FORCE_TX_ON);
 	if (rc)
 		goto err;
@@ -566,14 +621,28 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 	if (rc)
 		goto err_rx;
 
-	rc = at86rf230_write_subreg(lp, SR_TRX_CMD, STATE_BUSY_TX);
+	rc = __at86rf230_req_state(dev, STATE_BUSY_TX);
 	if (rc)
 		goto err_rx;
+
+
+	// request state rxon
+	rc = at86rf230_req_state(dev, STATE_RX_ON);
+	if (rc)
+		goto err_rx;
+
+	// set rx safe mode (debug if rx safe mode is set correctly)
+	// is setting rx safe mode necessary? The bit is reset with
+	// after a frame buffer read access.
 
 	rc = wait_for_completion_interruptible(&lp->tx_complete);
 	if (rc < 0)
 		goto err_rx;
 
+	// remove this call?
+	// maybe check state for debugging purpose...
+	// or split state change into request (before wait_for_completion)
+	// and check state here?
 	rc = at86rf230_start(dev);
 
 	return rc;
