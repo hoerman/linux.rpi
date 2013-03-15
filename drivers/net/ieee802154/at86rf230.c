@@ -730,17 +730,11 @@ static void at86rf230_irqwork(struct work_struct *work)
 	spin_lock_irqsave(&lp->lock, flags);
 	lp->irq_busy = 0;
 	spin_unlock_irqrestore(&lp->lock, flags);
-
-	if (!(lp->irq_type & IRQ_TYPE_EDGE_BOTH))
-		enable_irq(lp->spi->irq);
 }
 
 static irqreturn_t at86rf230_isr(int irq, void *data)
 {
 	struct at86rf230_local *lp = data;
-
-	if (!(lp->irq_type & IRQ_TYPE_EDGE_BOTH))
-		disable_irq_nosync(irq);
 
 	spin_lock(&lp->lock);
 	lp->irq_busy = 1;
@@ -949,13 +943,8 @@ static int at86rf230_probe(struct spi_device *spi)
 	if (rc)
 		goto err_gpio_dir;
 
-	if (lp->irq_type) {
-		rc = irq_set_irq_type(spi->irq, lp->irq_type);
-		if (rc)
-			goto err_gpio_dir;
-	}
-
-	rc = request_irq(spi->irq, at86rf230_isr, IRQF_SHARED,
+	rc = request_irq(spi->irq, at86rf230_isr,
+			 IRQF_SHARED | IRQF_TRIGGER_RISING,
 			 dev_name(&spi->dev), lp);
 	if (rc)
 		goto err_gpio_dir;
