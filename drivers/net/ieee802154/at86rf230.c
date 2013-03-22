@@ -825,7 +825,6 @@ static int at86rf230_fill_data(struct spi_device *spi)
 	lp->rstn = pdata->rstn;
 	lp->slp_tr = pdata->slp_tr;
 	lp->dig2 = pdata->dig2;
-	lp->irq_type = pdata->irq_type;
 
 	return 0;
 }
