@@ -449,6 +449,22 @@ at86rf230_ed(struct ieee802154_dev *dev, u8 *level)
 }
 
 static int
+at86rf230_read_state(struct ieee802154_dev *dev, u8 *state)
+{
+	struct at86rf230_local *lp = dev->priv;
+	int rc;
+
+	do {
+		rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, state);
+		if (rc)
+			goto out;
+	} while (*state == STATE_TRANSITION_IN_PROGRESS);
+
+out:
+	return rc;
+}
+
+static int
 at86rf230_state(struct ieee802154_dev *dev, int state)
 {
 	struct at86rf230_local *lp = dev->priv;
@@ -465,11 +481,9 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 	else
 		desired_status = state;
 
-	do {
-		rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, &val);
-		if (rc)
-			goto err;
-	} while (val == STATE_TRANSITION_IN_PROGRESS);
+	rc = at86rf230_read_state(dev, &val);
+	if (rc)
+		goto err;
 
 	if (val == desired_status)
 		return 0;
@@ -479,12 +493,9 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 	if (rc)
 		goto err;
 
-	do {
-		rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, &val);
-		if (rc)
-			goto err;
-	} while (val == STATE_TRANSITION_IN_PROGRESS);
-
+	rc = at86rf230_read_state(dev, &val);
+	if (rc)
+		goto err;
 
 	if (val == desired_status)
 		return 0;
@@ -542,6 +553,7 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 	struct at86rf230_local *lp = dev->priv;
 	int rc;
 	unsigned long flags;
+	u8 state;
 
 	spin_lock(&lp->lock);
 	if  (lp->irq_busy) {
@@ -566,6 +578,16 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 		goto err_rx;
 
 	rc = at86rf230_write_subreg(lp, SR_TRX_CMD, STATE_BUSY_TX);
+	if (rc)
+		goto err_rx;
+
+	/* wait for state change to complete */
+	rc = at86rf230_read_state(dev, &state);
+	if (rc)
+		goto err_rx;
+
+	/* state change will be defered until rf230 leaves state BUSY_TX */
+	rc = at86rf230_write_subreg(lp, SR_TRX_CMD, STATE_RX_ON);
 	if (rc)
 		goto err_rx;
 
